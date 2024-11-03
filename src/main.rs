@@ -1,3 +1,19 @@
+mod camera;
+mod streetnetwork;
+
+use bevy::prelude::*;
+use camera::CameraPlugin;
+use streetnetwork::StreetNetworkPlugin;
+
 fn main() {
-    println!("Hello, world!");
+    App::new()
+        .add_plugins((
+            DefaultPlugins,
+            CameraPlugin,
+            StreetNetworkPlugin,
+        ))
+        .run();
 }
+
+
+
