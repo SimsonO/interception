@@ -1,8 +1,10 @@
 mod camera;
 mod streetnetwork;
+mod civilian;
 
 use bevy::prelude::*;
 use camera::CameraPlugin;
+use civilian::CivilianPlugin;
 use streetnetwork::StreetNetworkPlugin;
 
 fn main() {
@@ -11,6 +13,7 @@ fn main() {
             DefaultPlugins,
             CameraPlugin,
             StreetNetworkPlugin,
+            CivilianPlugin
         ))
         .run();
 }
