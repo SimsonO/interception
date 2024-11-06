@@ -9,36 +9,57 @@ pub struct StreetNetworkPlugin;
 
 impl Plugin for StreetNetworkPlugin {
     fn build(&self, app: &mut App){
-        app.add_systems(Startup, (spawn_nodes, spawn_streets));
+        //app.add_systems(Startup, (spawn_streets));
+        let streets: Vec<((u16, u16), (u16, u16))> = vec![
+        ((0,0),(1,0)),
+        ((1,0),(2,0)),
+        ((2,0),(3,0)),
+        ((0,1),(1,1)),
+        ((1,1),(2,1)),
+        ((2,1),(3,1)),
+        ((0,2),(1,2)),
+        ((1,2),(2,2)),
+        ((2,2),(3,2)),
+        ];
+        app.insert_resource(available_streets(streets));
     }
 }
 
-const NUMBEROFSTORIES: u16 = 3;
-const STREETLENGTH: u16 = 4;
+pub const NUMBEROFSTORIES: u16 = 3;
+pub const STREETLENGTH: u16 = 4;
 
-#[derive(Component)]
+#[derive(Copy, Clone)]
 pub struct Node {
     pub coordinates: (u16,u16),
     pub world_coordinates: (f32, f32),
 }
 
+/*
 #[derive(Bundle)]
 pub struct NodeBundle<M: Material2d> {
     sprite: MaterialMesh2dBundle<M>,
     node: Node,
-}
+} */
 
 #[derive(Component)]
-pub struct Street (((u16,u16),(u16,u16)));
+pub struct Street //(((u16,u16),(u16,u16)));
+{
+    pub starting_node: Node,
+    pub ending_node: Node
+}
 
+#[derive(Resource)]
+pub struct available_streets(pub Vec<((u16, u16), (u16, u16))>);
+
+/* 
 impl Deref for Street {
     type Target = ((u16, u16), (u16, u16));
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
+}*/
+/* 
 fn spawn_nodes(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -64,21 +85,15 @@ fn spawn_nodes(
                 });
         }
     }
-}
+}*/
 
-fn coordinate_to_world_coordinates(i:&u16, j:&u16, window: &Window) -> (f32, f32){
-    let width = window.width();
-    let height = window.height();
-    let delta_top = height * 0.1;
-    let x: f32 = 0.8 * width * (-0.5 + *i as f32 / (STREETLENGTH as f32 - 1.0));
-    let y: f32 = 0.6 * height * (-0.5 + *j as f32 / (NUMBEROFSTORIES as f32 - 1.0)) - delta_top; 
-    (x,y)
-}
 
-pub fn spawn_streets(
-    mut commands: Commands
+
+/*pub fn spawn_streets(
+    mut commands: Commands,
+    window: Query<&Window>,
 ){
-    //TODO: might want to randomize this
+    //TODO: refactor this, so that Nodes get created separatly and copies into the streets and the street list contains of the nodes
     let available_streets: Vec<((u16, u16), (u16, u16))> = vec![
         ((0,0),(1,0)),
         ((1,0),(2,0)),
@@ -90,8 +105,23 @@ pub fn spawn_streets(
         ((1,2),(2,2)),
         ((2,2),(3,2)),
     ];
+    let window = window.single();
     for street in available_streets.iter(){
-        commands.spawn(Street(*street));
+        let world_coordinate_start = coordinate_to_world_coordinates(&street.0.0, &street.0.1, window);
+        let starting_node = Node {
+            coordinates: street.0,
+            world_coordinates: world_coordinate_start,
+        };
+        let world_coordinate_end = coordinate_to_world_coordinates(&street.1.0, &street.1.1, window);
+        let ending_node = Node {
+            coordinates: street.1,
+            world_coordinates: world_coordinate_end,
+        };
+        commands.spawn(
+            Street {
+                starting_node,
+                ending_node,
+        });
     }
     
-}
+}*/
