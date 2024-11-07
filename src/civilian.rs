@@ -1,6 +1,7 @@
 use bevy::{color::palettes::basic::BLUE, prelude::*};
-use crate::streetnetwork::{NUMBEROFSTORIES, STREETLENGTH, Node, Street, available_streets} ;
+use crate::streetnetwork::{NUMBEROFSTORIES, STREETLENGTH, Node, Street, AvailableStreets} ;
 use rand::Rng;
+use rand::seq::SliceRandom;
 
 
 pub struct CivilianPlugin;
@@ -11,13 +12,6 @@ impl Plugin for CivilianPlugin {
         app.add_systems(Update, move_civs);
     }
 }
-/* 
-#[derive(Component)]
-struct Person {
-    current_street: (Node,Node),
-    speed: f32,
-    progress: f32, //defines where on the street the civ is
-}*/
 
 #[derive(Component, Deref)]
 struct Speed(f32);
@@ -30,7 +24,7 @@ struct Civilian;
 fn spawn_civs(
     mut commands: Commands, 
     asset_server: Res<AssetServer>,
-    streets: Res<available_streets>,
+    streets: Res<AvailableStreets>,
     window: Query<&Window>,
 ){ 
     let mut rng = rand::thread_rng();
@@ -52,7 +46,7 @@ fn spawn_civs(
             ending_node
         };
 
-        let number_of_civilians = rng.gen_range(10..=30);
+        let number_of_civilians = rng.gen_range(5..=15);
         for _i in 0..number_of_civilians {
             let speed = rng.gen_range(1..4) as f32;
             let progress = rng.gen_range(0..=100) as f32 /100.0;
@@ -91,18 +85,58 @@ fn coordinate_to_world_coordinates(i:&u16, j:&u16, window: &Window) -> (f32, f32
 }
 
 fn move_civs(
-    mut civs: Query<(&Speed, &mut Progress, &mut Transform, &Street), With<Civilian>>,
-    timer: Res<Time>
+    mut civs: Query<(&Speed, &mut Progress, &mut Transform, &mut Street, Entity), With<Civilian>>,
+    timer: Res<Time>,
+    streets: Res<AvailableStreets>,
+    window: Query<&Window>,
+    mut commands: Commands
 ){
-    for (speed, mut progress, mut transform, street) in &mut civs {
-        progress.0 += speed.0 / 100.0 *  timer.delta_seconds();
-        let new_position = get_person_position(progress.0, street);
-        transform.translation = Vec3{x: new_position.0, y:  new_position.1, z: 0.0};
+    let window = window.single();
+    for (speed, mut progress, mut transform, mut street, entity) in &mut civs {
+        progress.0 += speed.0 / 20.0 *  timer.delta_seconds();
+        if progress.0 < 1.0 {
+            update_person_positon(progress.0, &street, &mut transform);
+        }
+        else {
+            if let Some(new_ending_node) = find_adjacent_node(&street, &streets.0, window){
+                street.starting_node = street.ending_node;
+                street.ending_node = new_ending_node;
+                progress.0 -= 1.0;
+                update_person_positon(progress.0, &street, &mut transform);
+            } else {
+                commands.entity(entity).despawn();
+            }
+        }
+        
     }
+}
+
+fn update_person_positon(progress: f32, street: &Street, transform: &mut Transform)
+{
+    let new_position = get_person_position(progress, &street);
+            transform.translation = Vec3{x: new_position.0, y:  new_position.1, z: 0.0};
 }
 
 fn get_person_position(progress: f32, street: &Street) -> (f32, f32){
     let x = street.starting_node.world_coordinates.0 * (1.0-progress) + street.ending_node.world_coordinates.0 * progress;
     let y = street.starting_node.world_coordinates.1 * (1.0-progress) + street.ending_node.world_coordinates.1 * progress;
     (x,y)
+}
+
+fn find_adjacent_node(street: &Street, streets: &Vec<((u16, u16), (u16, u16))>,window: &Window) -> Option<Node> {
+    let outgoing_streets: Vec<&((u16, u16), (u16, u16))> = streets.iter()
+        .filter(|&&(first, _)| first == street.ending_node.coordinates)
+        .collect();
+    let mut rng = rand::thread_rng();
+    if let Some(&new_street) = outgoing_streets.choose(&mut rng) {
+        let ending_node = Node {
+            coordinates: new_street.1,
+            world_coordinates: coordinate_to_world_coordinates(&new_street.1.0, &new_street.1.1, window)
+        };
+        Some(ending_node)
+        
+    } else {
+        None
+    }
+
 }
